@@ -1,1 +1,574 @@
-<!doctype html><title>Spout on-chain</title>
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spout on-chain</title>
+<script>
+  // Light by default, like spout.finance; the toggle in the top bar remembers a choice.
+  try { const t = new URLSearchParams(location.search).get("theme") || localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<meta name="description" content="Spout Finance's devnet programs, indexed live with Envio HyperIndex." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Hedvig+Letters+Serif&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #ffffff;
+    --tint: #f5f8fd;
+    --sky-1: #dfeaff;
+    --sky-2: #f3f7ff;
+    --ink: #111827;
+    --navy: #082567;
+    --navy-deep: #051a4a;
+    --soft: #6e9be6;
+    --muted: #6b7183;
+    --faint: #9aa0b0;
+    --rule: #e5edf5;
+    --track: #e9eff8;
+    --series: #082567;
+    --series-soft: rgba(8, 37, 103, 0.09);
+    --gold: #d9a520;
+    --live: #2fb344;
+    --band-ink: #ffffff;
+    --band-muted: #c3d0ee;
+    --serif: "Hedvig Letters Serif", Georgia, ui-serif, serif;
+    --sans: Figtree, ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0f1a; --tint: #111727; --sky-1: #101c3d; --sky-2: #0b0f1a; --ink: #e8ecf5;
+      --navy: #dbe6ff; --navy-deep: #0a1e52; --soft: #7fa8f5; --muted: #98a0b5; --faint: #6c748a;
+      --rule: #1e2740; --track: #1a2238; --series: #8fb2ff; --series-soft: rgba(143, 178, 255, 0.12);
+      --gold: #e6bb4a; --live: #46c95a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f1a; --tint: #111727; --sky-1: #101c3d; --sky-2: #0b0f1a; --ink: #e8ecf5;
+    --navy: #dbe6ff; --navy-deep: #0a1e52; --soft: #7fa8f5; --muted: #98a0b5; --faint: #6c748a;
+    --rule: #1e2740; --track: #1a2238; --series: #8fb2ff; --series-soft: rgba(143, 178, 255, 0.12);
+    --gold: #e6bb4a; --live: #46c95a;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 16px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Top bar */
+  .top { border-bottom: 1px solid var(--rule); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 16px; }
+  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .brand b { font-weight: 600; font-size: 18px; color: var(--navy); letter-spacing: -0.01em; white-space: nowrap; }
+  .brand span { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status { display: flex; align-items: center; gap: 8px; font: 500 12.5px var(--mono); color: var(--muted); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.live { background: var(--live); box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 18%, transparent); }
+  .dot.down { background: #d9534f; }
+  .theme { margin-left: 8px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--rule); background: transparent; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
+  .theme:hover { color: var(--navy); border-color: var(--soft); }
+
+  /* Hero */
+  .hero { background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 78%, var(--bg) 100%); }
+  .hero .wrap { padding-top: 72px; padding-bottom: 56px; }
+  h1, h2 { font-family: var(--serif); font-weight: 400; color: var(--navy); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(34px, 5.2vw, 54px); line-height: 1.08; }
+  h1 em, h2 em { font-style: normal; color: var(--soft); }
+  .lede { max-width: 600px; margin: 18px 0 0; color: var(--muted); font-size: 17px; }
+
+  /* Navy band */
+  .band {
+    background:
+      radial-gradient(900px 300px at 15% 0%, rgba(111, 155, 230, 0.22), transparent 70%),
+      radial-gradient(700px 320px at 90% 100%, rgba(111, 155, 230, 0.14), transparent 70%),
+      var(--navy-deep);
+    color: var(--band-ink);
+  }
+  .band .wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding-top: 52px; padding-bottom: 52px; }
+  .stat { text-align: center; }
+  .stat .v { font: 600 clamp(28px, 3.6vw, 40px)/1.1 var(--sans); letter-spacing: -0.02em; }
+  .stat .l { margin-top: 10px; color: var(--band-muted); font-size: 15px; }
+  .stat .s { margin-top: 2px; color: var(--band-muted); opacity: 0.75; font-size: 13px; }
+
+  /* Sections */
+  section { padding: 76px 0 8px; }
+  section + section { border-top: 1px solid var(--rule); margin-top: 68px; }
+  h2 { font-size: clamp(28px, 3.4vw, 36px); line-height: 1.15; }
+  .sub { color: var(--muted); margin: 10px 0 0; max-width: 620px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 48px; margin-top: 40px; align-items: start; }
+  .label { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15px; color: var(--ink); }
+  .label::before { content: ""; width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid var(--live); flex: none; }
+  .hint { color: var(--muted); font-size: 14px; margin: 4px 0 0 20px; }
+  .figure { font: 600 30px/1.1 var(--sans); letter-spacing: -0.02em; margin: 14px 0 0 20px; }
+  .figure small { font: 400 14px var(--sans); color: var(--muted); letter-spacing: 0; margin-left: 8px; white-space: nowrap; }
+
+  /* Charts */
+  .chart { position: relative; margin-top: 14px; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+  .chart text { font: 400 11px var(--mono); fill: var(--faint); }
+  .grid-line { stroke: var(--rule); stroke-width: 1; }
+  .tip {
+    position: absolute; top: 0; left: 0; pointer-events: none; opacity: 0; transition: opacity 0.1s;
+    background: var(--bg); border: 1px solid var(--rule); border-radius: 10px; padding: 8px 11px;
+    box-shadow: 0 6px 24px rgba(8, 37, 103, 0.12); font-size: 13px; white-space: nowrap; z-index: 2;
+  }
+  .tip b { display: block; font-weight: 600; }
+  .tip span { color: var(--muted); font-size: 12px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th { text-align: right; font-weight: 500; color: var(--muted); font-size: 12.5px; padding: 0 0 10px 12px; white-space: nowrap; }
+  td { text-align: right; padding: 11px 0 11px 12px; border-top: 1px solid var(--rule); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; }
+  .sym { font-weight: 600; color: var(--navy); }
+  .dim { color: var(--muted); }
+  .ltv { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .ltv i { position: relative; display: block; width: 92px; height: 6px; border-radius: 3px; background: var(--track); }
+  .ltv i b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--series); min-width: 2px; }
+  .ltv i u { position: absolute; top: -3px; bottom: -3px; width: 1.5px; background: var(--gold); }
+  .legend { display: flex; gap: 18px; justify-content: flex-end; color: var(--muted); font-size: 12.5px; margin-top: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .k-bar { width: 14px; height: 6px; border-radius: 3px; background: var(--series); }
+  .legend .k-cap { width: 1.5px; height: 12px; background: var(--gold); }
+  .scroll { overflow-x: auto; }
+
+  /* Tranches */
+  .tranches { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  .card { background: var(--tint); border: 1px solid var(--rule); border-radius: 14px; padding: 20px; }
+  .card h3 { margin: 0; font: 600 15px var(--sans); display: flex; justify-content: space-between; align-items: baseline; }
+  .card h3 span { font: 400 12.5px var(--sans); color: var(--muted); }
+  .card .px { font: 600 28px/1.1 var(--sans); letter-spacing: -0.02em; margin-top: 16px; }
+  .card .px small { font: 400 13px var(--sans); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+  .card dl { margin: 16px 0 0; display: grid; grid-template-columns: 1fr auto; row-gap: 6px; font-size: 14px; }
+  .card dt { color: var(--muted); }
+  .card dd { margin: 0; text-align: right; }
+  .split { margin-top: 18px; }
+  .split .bar { display: flex; gap: 2px; height: 10px; }
+  .split .bar i { display: block; height: 100%; border-radius: 3px; background: var(--series); min-width: 3px; }
+  .split .bar i + i { background: var(--soft); }
+  .split .keys { display: flex; justify-content: space-between; color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+
+  /* Activity */
+  .chip { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; background: var(--tint); border: 1px solid var(--rule); color: var(--ink); }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  td a { text-decoration: none; border-bottom: 1px solid var(--rule); }
+  td a:hover { border-color: var(--soft); }
+
+  footer { border-top: 1px solid var(--rule); margin-top: 76px; padding: 36px 0 56px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 40px; justify-content: space-between; }
+  footer code { font: 400 12.5px var(--mono); color: var(--ink); background: var(--tint); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; display: inline-block; margin-top: 6px; word-break: break-all; }
+  footer a { color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .error { margin: 24px 0 0; padding: 12px 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--bg); color: var(--muted); font-size: 14px; display: none; }
+
+  @media (max-width: 860px) {
+    .wrap { padding: 0 16px; }
+    .hero .wrap { padding-top: 48px; padding-bottom: 40px; }
+    .band .wrap { grid-template-columns: 1fr 1fr; gap: 36px 16px; padding-top: 40px; padding-bottom: 40px; }
+    .grid { grid-template-columns: minmax(0, 1fr); gap: 44px; }
+    section { padding-top: 52px; }
+    section + section { margin-top: 48px; }
+    .brand span { display: none; }
+    .hide-s { display: none; }
+    .figure small { display: block; margin: 6px 0 0; }
+  }
+  @media (max-width: 460px) { .tranches { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <div class="brand"><b>Spout on-chain</b><span>Solana devnet · indexed with Envio HyperIndex</span></div>
+    <div class="status"><i class="dot" id="dot"></i><span id="status">connecting</span><button class="theme" id="theme" type="button" aria-label="Switch between light and dark">◐</button></div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>Every loan, <em>read from the chain</em></h1>
+    <p class="lede">Spout's testnet programs on Solana, indexed as they run: who borrowed against which stock, what lenders hold, and what each covered-call cycle paid them.</p>
+    <div class="error" id="error"></div>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap">
+    <div class="stat"><div class="v num" id="s-debt">–</div><div class="l">Borrowed at 0%</div><div class="s" id="s-debt-sub">&nbsp;</div></div>
+    <div class="stat"><div class="v num" id="s-coll">–</div><div class="l">Stock collateral</div><div class="s" id="s-coll-sub">&nbsp;</div></div>
+    <div class="stat"><div class="v num" id="s-pool">–</div><div class="l">Lender pool</div><div class="s" id="s-pool-sub">&nbsp;</div></div>
+    <div class="stat"><div class="v num" id="s-kyc">–</div><div class="l">Verified wallets</div><div class="s" id="s-kyc-sub">&nbsp;</div></div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section>
+    <h2>Loans <em>against stocks</em></h2>
+    <p class="sub">Borrowers post tokenized shares and draw USDC. Debt only moves when someone borrows, repays or is liquidated.</p>
+    <div class="grid">
+      <div>
+        <div class="label">USDC owed by borrowers</div>
+        <div class="figure num" id="f-debt">–</div>
+        <div class="chart" id="c-debt"></div>
+      </div>
+      <div>
+        <div class="label">By stock</div>
+        <p class="hint">Loan-to-value across all vaults, at the last fill price.</p>
+        <div class="scroll" style="margin-top:16px">
+          <table id="t-assets">
+            <thead><tr><th>Stock</th><th class="hide-s">Vaults</th><th>Collateral</th><th>Debt</th><th>LTV</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="legend"><span><i class="k-bar"></i>Loan-to-value</span><span><i class="k-cap"></i>50% maximum</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What <em>lenders hold</em></h2>
+    <p class="sub">USDC lent into two tranches. Senior is paid first; junior takes the first loss and the larger share of premium.</p>
+    <div class="grid">
+      <div>
+        <div class="label">Tranches</div>
+        <div class="tranches" id="tranches"></div>
+        <div class="split" id="split"></div>
+      </div>
+      <div>
+        <div class="label">Paid to lenders</div>
+        <div class="figure num" id="f-yield">–</div>
+        <div class="scroll" style="margin-top:16px">
+          <table id="t-yield">
+            <thead><tr><th>Cycle</th><th>Source</th><th>To lenders</th><th class="hide-s">To reserve</th><th>Date</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Stock <em>orders</em></h2>
+    <p class="sub">KYC-verified wallets buy and sell the tokenized shares that back the loans.</p>
+    <div class="grid">
+      <div>
+        <div class="label">Filled volume per day</div>
+        <div class="figure num" id="f-vol">–</div>
+        <div class="chart" id="c-vol"></div>
+      </div>
+      <div>
+        <div class="label">Latest activity</div>
+        <div class="scroll" style="margin-top:16px">
+          <table id="t-feed">
+            <thead><tr><th>Action</th><th>Amount</th><th class="hide-s">Wallet</th><th>When</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      Query it yourself — public GraphQL<br />
+      <code id="endpoint"></code>
+    </div>
+    <div>
+      Testnet data from Solana devnet. Amounts are test USDC.<br />
+      <a href="https://github.com/enviodev/spout">Indexer source and schema</a> · built with <a href="https://envio.dev">Envio HyperIndex</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const OVERRIDE = new URLSearchParams(location.search).get("endpoint");
+const ENDPOINTS = OVERRIDE ? [OVERRIDE] : [
+  "https://enviodev-213a77d.internal.hyperindex.xyz/v1/graphql",
+  "https://indexer.eu-internal.hyperindex.xyz/213a77d/v1/graphql",
+];
+const QUERY = `{
+  Protocol { debtOutstanding totalBorrowed totalRepaid vaultCount openLoanCount borrowerCount poolAssets
+    lenderCount yieldToLenders identityCount verifiedCount orderCount filledOrderCount buyVolume sellVolume lastSlot lastTime }
+  TrancheStat { tranche deposited withdrawn shares sharePrice depositCount }
+  Asset(where: {symbol: {_is_null: false}}) { symbol collateral debtOutstanding vaultCount lastPrice lastPriceTime }
+  DailyStat(order_by: {date: asc}) { date buyVolume sellVolume debtOutstanding }
+  YieldDistribution(order_by: {cycle: desc}) { cycle source toLenders toReserve time }
+  VaultAction(where: {kind: {_in: [BORROW, REPAY]}}, order_by: {slot: desc}, limit: 8) { kind amount time txSignature account_id asset { symbol } }
+  LiquidityAction(order_by: {slot: desc}, limit: 4) { kind tranche usdc time txSignature account_id }
+  Order(where: {status: {_eq: FILLED}}, order_by: {filledAt: desc}, limit: 8) { side ticker amountIn amountOut filledAt fillTx account_id }
+}`;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const usdc = (atoms) => Number(atoms) / 1e6;
+const stock = (atoms) => Number(atoms) / 1e9;
+const DAY = 86400;
+
+function money(n, { compact = false } = {}) {
+  if (compact && Math.abs(n) >= 10000) {
+    return "$" + new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+  }
+  const digits = Math.abs(n) >= 1000 ? 0 : 2;
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+const count = (n) => Number(n).toLocaleString("en-US");
+const qty = (n) => n.toLocaleString("en-US", { maximumFractionDigits: n >= 100 ? 0 : n >= 1 ? 2 : 4 });
+const short = (a) => a.slice(0, 4) + "…" + a.slice(-4);
+const dateLabel = (t) => new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+function ago(t) {
+  const s = Math.max(0, Date.now() / 1000 - t);
+  if (s < 90) return "just now";
+  if (s < 3600) return Math.round(s / 60) + "m ago";
+  if (s < 86400) return Math.round(s / 3600) + "h ago";
+  return Math.round(s / 86400) + "d ago";
+}
+const tx = (sig) => `https://solscan.io/tx/${encodeURIComponent(sig)}?cluster=devnet`;
+
+let endpoint = null;
+async function fetchData() {
+  const candidates = endpoint ? [endpoint, ...ENDPOINTS.filter((e) => e !== endpoint)] : ENDPOINTS;
+  let lastError;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: QUERY }) });
+      const json = await res.json();
+      if (json.errors) throw new Error(json.errors[0].message);
+      endpoint = url;
+      return json.data;
+    } catch (e) { lastError = e; }
+  }
+  throw lastError;
+}
+
+/* ---- charts -------------------------------------------------------------- */
+
+const W = 640, H = 300, PAD = { l: 8, r: 8, t: 12, b: 26 };
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  return [1, 2, 2.5, 5, 10].map((m) => m * p).find((m) => m >= v);
+}
+/** Fills the gaps between event days so the x axis is real time. */
+function daily(stats) {
+  if (!stats.length) return [];
+  const byDay = new Map(stats.map((d) => [d.date, d]));
+  const out = [];
+  let debt = 0;
+  const end = Math.max(stats[stats.length - 1].date, Math.floor(Date.now() / 1000 / DAY) * DAY);
+  for (let t = stats[0].date; t <= end; t += DAY) {
+    const d = byDay.get(t);
+    if (d) debt = usdc(d.debtOutstanding);
+    out.push({ date: t, debt, volume: d ? usdc(d.buyVolume) + usdc(d.sellVolume) : 0, buy: d ? usdc(d.buyVolume) : 0, sell: d ? usdc(d.sellVolume) : 0 });
+  }
+  return out;
+}
+/** Gridlines, y labels and three date labels shared by both charts. `x` places day i. */
+function frame(days, max, x) {
+  const y = (v) => H - PAD.b - (v / max) * (H - PAD.t - PAD.b);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (const f of [0.5, 1]) {
+    svg += `<line class="grid-line" x1="${PAD.l}" x2="${W - PAD.r}" y1="${y(max * f)}" y2="${y(max * f)}"/>`;
+    svg += `<text x="${PAD.l}" y="${y(max * f) - 5}">${money(max * f, { compact: true })}</text>`;
+  }
+  svg += `<line class="grid-line" x1="${PAD.l}" x2="${W - PAD.r}" y1="${y(0)}" y2="${y(0)}"/>`;
+  const ticks = [0, Math.floor((days.length - 1) / 2), days.length - 1].filter((v, i, a) => a.indexOf(v) === i);
+  for (const i of ticks) {
+    const anchor = i === 0 ? "start" : i === days.length - 1 ? "end" : "middle";
+    const at = i === 0 ? PAD.l : i === days.length - 1 ? W - PAD.r : x(i);
+    svg += `<text x="${at}" y="${H - 6}" text-anchor="${anchor}">${dateLabel(days[i].date)}</text>`;
+  }
+  return { y, svg };
+}
+/** Pointer tracking shared by both charts: `pick` maps an x in viewBox units to a day index. */
+function hover(el, days, x, pick, text, mark) {
+  const svg = el.querySelector("svg");
+  const tip = el.querySelector(".tip");
+  svg.addEventListener("pointermove", (ev) => {
+    const box = svg.getBoundingClientRect();
+    const i = Math.max(0, Math.min(days.length - 1, pick(((ev.clientX - box.left) / box.width) * W)));
+    tip.innerHTML = text(days[i]);
+    tip.style.opacity = 1;
+    const left = (x(i) / W) * box.width - tip.offsetWidth / 2;
+    tip.style.transform = `translate(${Math.max(0, Math.min(box.width - tip.offsetWidth, left))}px, 0)`;
+    mark(i);
+  });
+  svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; mark(-1); });
+}
+function lineChart(el, days) {
+  const span = W - PAD.l - PAD.r;
+  const x = (i) => PAD.l + (days.length === 1 ? 0.5 : i / (days.length - 1)) * span;
+  const max = niceMax(Math.max(...days.map((d) => d.debt)));
+  const { y, svg: base } = frame(days, max, x);
+  const pts = days.map((d, i) => `${x(i).toFixed(1)},${y(d.debt).toFixed(1)}`);
+  let svg = base;
+  svg += `<path d="M${PAD.l},${y(0)} L${pts.join(" L")} L${x(days.length - 1)},${y(0)} Z" fill="var(--series-soft)"/>`;
+  svg += `<path d="M${pts.join(" L")}" fill="none" stroke="var(--series)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  svg += `<line class="cross" y1="${PAD.t}" y2="${y(0)}" stroke="var(--faint)" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>`;
+  svg += `<circle class="pt" r="4.5" fill="var(--series)" stroke="var(--bg)" stroke-width="2" opacity="0"/>`;
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg>`;
+  el.innerHTML = svg + `<div class="tip"></div>`;
+  const cross = el.querySelector(".cross"), pt = el.querySelector(".pt");
+  hover(el, days, x, (px) => Math.round(((px - PAD.l) / span) * (days.length - 1)),
+    (d) => `<b class="num">${money(d.debt)}</b><span>${dateLabel(d.date)}</span>`,
+    (i) => {
+      const on = i >= 0 ? 1 : 0;
+      cross.setAttribute("opacity", on); pt.setAttribute("opacity", on);
+      if (on) { cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); pt.setAttribute("cx", x(i)); pt.setAttribute("cy", y(days[i].debt)); }
+    });
+}
+function barChart(el, days) {
+  const slot = (W - PAD.l - PAD.r) / days.length;
+  const bw = Math.max(2, slot - 2);
+  const bx = (i) => PAD.l + i * slot + (slot - bw) / 2;
+  const cx = (i) => bx(i) + bw / 2;
+  const max = niceMax(Math.max(...days.map((d) => d.volume)));
+  const { y, svg: base } = frame(days, max, cx);
+  let svg = base;
+  days.forEach((d, i) => {
+    if (d.volume <= 0) return;
+    const h = Math.max(1.5, y(0) - y(d.volume)), r = Math.min(3, bw / 2, h);
+    svg += `<path data-i="${i}" fill="var(--series)" d="M${bx(i)},${y(0)} v${-(h - r)} q0,${-r} ${r},${-r} h${bw - 2 * r} q${r},0 ${r},${r} v${h - r} Z"/>`;
+  });
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg>`;
+  el.innerHTML = svg + `<div class="tip"></div>`;
+  const bars = [...el.querySelectorAll("path[data-i]")];
+  hover(el, days, cx, (px) => Math.floor((px - PAD.l) / slot),
+    (d) => `<b class="num">${money(d.volume)}</b><span>${dateLabel(d.date)} · ${money(d.buy)} bought, ${money(d.sell)} sold</span>`,
+    (i) => bars.forEach((b) => b.setAttribute("opacity", i < 0 || Number(b.dataset.i) === i ? 1 : 0.35)));
+}
+
+/* ---- render -------------------------------------------------------------- */
+
+/** One row per ticker: both of its mints summed, priced at whichever filled last. */
+function byStock(assets) {
+  const map = new Map();
+  for (const a of assets) {
+    const row = map.get(a.symbol) ?? { symbol: a.symbol, collateral: 0, debt: 0, vaults: 0, price: null, priceTime: 0 };
+    row.collateral += stock(a.collateral);
+    row.debt += usdc(a.debtOutstanding);
+    row.vaults += a.vaultCount;
+    if (a.lastPrice != null && (a.lastPriceTime ?? 0) >= row.priceTime) { row.price = Number(a.lastPrice); row.priceTime = a.lastPriceTime ?? 0; }
+    map.set(a.symbol, row);
+  }
+  return [...map.values()]
+    .map((r) => ({ ...r, value: r.price == null ? null : r.collateral * r.price }))
+    .filter((r) => r.debt > 0 || r.collateral > 0)
+    .sort((a, b) => b.debt - a.debt);
+}
+
+function render(data) {
+  const p = data.Protocol[0];
+  if (!p) throw new Error("the indexer has not written any data yet");
+  const stocks = byStock(data.Asset);
+  const debt = usdc(p.debtOutstanding);
+  const collateralValue = stocks.reduce((s, r) => s + (r.value ?? 0), 0);
+
+  $("s-debt").textContent = money(debt, { compact: true });
+  $("s-debt-sub").textContent = `${count(p.openLoanCount)} open loans`;
+  $("s-coll").textContent = money(collateralValue, { compact: true });
+  $("s-coll-sub").textContent = `${stocks.length} stocks, at last fill price`;
+  $("s-pool").textContent = money(usdc(p.poolAssets), { compact: true });
+  $("s-pool-sub").textContent = `${count(p.lenderCount)} lenders`;
+  $("s-kyc").textContent = count(p.verifiedCount);
+  $("s-kyc-sub").textContent = `${count(p.borrowerCount)} have borrowed`;
+
+  // Borrowing
+  $("f-debt").innerHTML = `${money(debt)}<small>${money(usdc(p.totalBorrowed))} drawn, ${money(usdc(p.totalRepaid))} repaid</small>`;
+  const days = daily(data.DailyStat);
+  if (days.length) lineChart($("c-debt"), days);
+  $("t-assets").tBodies[0].innerHTML = stocks.slice(0, 8).map((r) => {
+    const ltv = r.value ? r.debt / r.value : null;
+    // The track spans 0–60% so the 50% cap sits inside it.
+    const fill = ltv == null ? 0 : Math.min(1, ltv / 0.6) * 100;
+    return `<tr>
+      <td class="sym">${esc(r.symbol)}</td>
+      <td class="num dim hide-s">${count(r.vaults)}</td>
+      <td class="num">${r.value == null ? qty(r.collateral) : money(r.value)}</td>
+      <td class="num">${money(r.debt)}</td>
+      <td><div class="ltv"><span class="num">${ltv == null ? "–" : (ltv * 100).toFixed(1) + "%"}</span><i><b style="width:${fill}%"></b><u style="left:${(0.5 / 0.6) * 100}%"></u></i></div></td>
+    </tr>`;
+  }).join("");
+
+  // Lending
+  const order = { SENIOR: 0, JUNIOR: 1 };
+  const tranches = [...data.TrancheStat].sort((a, b) => order[a.tranche] - order[b.tranche]);
+  $("tranches").innerHTML = tranches.map((t) => `<div class="card">
+      <h3>${t.tranche === "SENIOR" ? "Senior" : "Junior"}<span>${t.tranche === "SENIOR" ? "paid first" : "first loss"}</span></h3>
+      <div class="px num">${t.sharePrice == null ? "–" : "$" + Number(t.sharePrice).toFixed(4)}<small>per share</small></div>
+      <dl>
+        <dt>Deposited</dt><dd class="num">${money(usdc(t.deposited))}</dd>
+        <dt>Withdrawn</dt><dd class="num">${money(usdc(t.withdrawn))}</dd>
+        <dt>Deposits</dt><dd class="num">${count(t.depositCount)}</dd>
+      </dl>
+    </div>`).join("");
+  const net = tranches.map((t) => Math.max(0, usdc(t.deposited) - usdc(t.withdrawn)));
+  const total = net.reduce((a, b) => a + b, 0);
+  if (total > 0 && tranches.length === 2) {
+    const pct = (v) => ((v / total) * 100).toFixed(1) + "%";
+    $("split").innerHTML = `<div class="bar"><i style="width:${(net[0] / total) * 100}%"></i><i style="width:${(net[1] / total) * 100}%"></i></div>
+      <div class="keys"><span>Senior ${pct(net[0])} of net deposits</span><span>Junior ${pct(net[1])}</span></div>`;
+  }
+  $("f-yield").innerHTML = `${money(usdc(p.yieldToLenders))}<small>over ${data.YieldDistribution.length} distributions</small>`;
+  $("t-yield").tBodies[0].innerHTML = data.YieldDistribution.slice(0, 6).map((d) => `<tr>
+      <td class="num">${d.cycle}</td>
+      <td class="dim">${d.source === "TBILL" ? "T-bill yield" : "Call premium"}</td>
+      <td class="num">${money(usdc(d.toLenders))}</td>
+      <td class="num dim hide-s">${money(usdc(d.toReserve))}</td>
+      <td class="dim">${dateLabel(d.time)}</td>
+    </tr>`).join("");
+
+  // Orders
+  $("f-vol").innerHTML = `${money(usdc(p.buyVolume) + usdc(p.sellVolume))}<small>${count(p.filledOrderCount)} fills</small>`;
+  if (days.length) barChart($("c-vol"), days);
+
+  const feed = [
+    ...data.VaultAction.map((a) => ({ time: a.time, label: a.kind === "BORROW" ? "Borrow" : "Repay", detail: a.asset?.symbol ? `vs ${a.asset.symbol}` : "", amount: usdc(a.amount), wallet: a.account_id, sig: a.txSignature })),
+    ...data.LiquidityAction.map((a) => ({ time: a.time, label: a.kind === "DEPOSIT" ? "Lend" : "Withdraw", detail: a.tranche.toLowerCase(), amount: usdc(a.usdc), wallet: a.account_id, sig: a.txSignature })),
+    ...data.Order.map((o) => ({ time: o.filledAt, label: o.side === "BUY" ? "Buy" : "Sell", detail: o.ticker, amount: usdc(o.side === "BUY" ? o.amountIn : o.amountOut), wallet: o.account_id, sig: o.fillTx })),
+  ].sort((a, b) => b.time - a.time).slice(0, 7);
+  $("t-feed").tBodies[0].innerHTML = feed.map((f) => `<tr>
+      <td><span class="chip">${f.label}</span> <span class="dim">${esc(f.detail)}</span></td>
+      <td class="num">${money(f.amount)}</td>
+      <td class="mono dim hide-s">${esc(short(f.wallet))}</td>
+      <td class="dim"><a href="${tx(f.sig)}" target="_blank" rel="noopener">${ago(f.time)}</a></td>
+    </tr>`).join("");
+
+  $("status").textContent = `slot ${count(p.lastSlot)}`;
+  $("dot").className = "dot live";
+}
+
+async function tick() {
+  try {
+    render(await fetchData());
+    $("error").style.display = "none";
+    $("endpoint").textContent = endpoint;
+  } catch (e) {
+    $("dot").className = "dot down";
+    $("status").textContent = "offline";
+    $("error").textContent = `Could not load data from the indexer (${e.message}). Retrying.`;
+    $("error").style.display = "block";
+  }
+}
+$("endpoint").textContent = ENDPOINTS[0];
+$("theme").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+});
+tick();
+setInterval(tick, 15000);
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@ A [HyperIndex](https://docs.envio.dev) indexer for [Spout Finance](https://spout
 HyperSync on Solana devnet, where Spout's testnet runs.
 
 - **Dashboard:** https://enviodev.github.io/spout/ (source in `docs/`, a single static page)
-- **GraphQL:** https://enviodev-ENDPOINT_HASH.internal.hyperindex.xyz/v1/graphql (Envio Cloud staging)
+- **GraphQL:** https://enviodev-213a77d.internal.hyperindex.xyz/v1/graphql (Envio Cloud staging)
 - **Coverage:** slot 485,196,645 (2026-08-17) to the chain head
 - **Backfill time:** about 20 seconds on a laptop
 
