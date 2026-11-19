@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=./node_modules/envio/svm.schema.json
+name: spout-indexer
+description: Spout Finance (spout.finance) — 0% loans against tokenized stocks, tranched lending, KYC-gated stock orders
+ecosystem: svm
+
+chains:
+  - id: solana-devnet
+    # Earliest slot HyperSync serves for these programs on devnet.
+    start_slot: 485190000
+
+# None of the three programs publishes an IDL. They are Anchor programs, so each
+# instruction is keyed by its 8-byte discriminator, sha256("global:<name>")[..8].
+# Argument layouts below were recovered from devnet transactions and checked
+# against the programs' own logs. Account slots moved between program upgrades,
+# so the handlers read them by position (see src/handlers/layout.ts) instead of
+# naming them here.
+programs:
+  - name: Vault
+    program_id: spvaDgABYdpFKyatqo4Jr3nfwvVgWF5BbFxKFkzN3Am
+    instructions:
+      - name: initialize_vault
+        discriminator: "0x30bfa32c47813fa4"
+        args: []
+      - name: deposit_collateral
+        discriminator: "0x9c838e7492f7a278"
+        args: &amount
+          - { name: amount, type: u64 }
+      - name: top_up_collateral
+        discriminator: "0xc7fdf7a5140a7ff3"
+        args: *amount
+      - name: borrow_stablecoin
+        discriminator: "0x8b11c9327a54c41b"
+        args: *amount
+      - name: repay_debt
+        discriminator: "0x4fc81e0ffc16a208"
+        args: *amount
+      - name: seize_collateral
+        discriminator: "0x28fa07f3a8b8749a"
+      - name: settle_liquidation_downside
+        discriminator: "0x66ca98888929ca9f"
+        args:
+          - { name: collateral, type: u64 }
+          - { name: proceeds, type: u64 }
+      # The lender instructions gained a trailing tranche byte in an upgrade and
+      # report shares / payout through an Anchor event, so they are decoded by hand.
+      - name: deposit_liquidity
+        discriminator: "0xf5633b199747e9f9"
+      - name: withdraw_liquidity
+        discriminator: "0x959e21b92ff3fd1f"
+      - name: distribute_yield
+        discriminator: "0xe95cba9debeed472"
+
+  - name: Orders
+    program_id: SPoRXgsB4gWZmWPwyndoRWQrmZXKUc7o7oPMdkkGRcG
+    instructions:
+      - name: place_buy_order
+        discriminator: "0x2ffdf1d6a7cc0b27"
+        args: &order
+          - { name: order_id, type: u128 }
+          - { name: ticker, type: string }
+          - { name: amount, type: u64 }
+          - { name: reserved, type: u128 }
+      - name: place_sell_order
+        discriminator: "0xfeb1b468abc24f56"
+        args: *order
+      # Each fulfil instruction exists twice: the original freeze-gated mints
+      # (Token-2022) and the current KYC-gated ones.
+      - name: fulfill_buy_order_freeze_gated
+        discriminator: "0x75241672c9a67200"
+        args: *amount
+      - name: fulfill_buy_order_kyc_gated
+        discriminator: "0xa9fc46f38f5a04d3"
+        args: *amount
+      - name: fulfill_sell_order_freeze_gated
+        discriminator: "0x726005b6850cf7fe"
+        args: *amount
+      - name: fulfill_sell_order_kyc_gated
+        discriminator: "0xa6b67f02f34e1385"
+        args: *amount
+      - name: request_cancel_order
+        discriminator: "0x56697d25d5cebd74"
+        args: []
+
+  - name: OnchainId
+    program_id: SKYCVrkX3mQaHwZcLrUtuvzii43kma7kBUim5MaQm6k
+    instructions:
+      - name: create_identity_for_user
+        discriminator: "0x74b0297756713d28"
+        args: []
+      - name: set_verified
+        discriminator: "0x019cf6f474192d98"
+        args:
+          - { name: verified, type: bool }

@@ -1,0 +1,228 @@
+# Units: USDC amounts are raw atoms (6 decimals). Stock-token amounts are raw
+# atoms (9 decimals). Prices are USDC per whole stock token.
+
+enum VaultStatus {
+  ACTIVE
+  FROZEN
+  SETTLED
+}
+
+enum VaultActionKind {
+  DEPOSIT
+  TOP_UP
+  BORROW
+  REPAY
+  SEIZE
+  SETTLE
+}
+
+enum Tranche {
+  SENIOR
+  JUNIOR
+}
+
+enum LiquidityKind {
+  DEPOSIT
+  WITHDRAW
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  OPEN
+  FILLED
+  CANCEL_REQUESTED
+}
+
+enum YieldSource {
+  OPTION_PREMIUM
+  TBILL
+}
+
+"Protocol-wide totals. Single row, id `spout`."
+type Protocol {
+  id: ID!
+  "USDC currently owed by borrowers: borrowed − repaid − settled in liquidations."
+  debtOutstanding: BigInt!
+  totalBorrowed: BigInt!
+  totalRepaid: BigInt!
+  vaultCount: Int!
+  "Vaults with debt > 0."
+  openLoanCount: Int!
+  borrowerCount: Int!
+  liquidationCount: Int!
+  "Lender pool assets as last reported by the program (senior + junior, lent and idle)."
+  poolAssets: BigInt!
+  lpDeposited: BigInt!
+  lpWithdrawn: BigInt!
+  lenderCount: Int!
+  yieldToLenders: BigInt!
+  identityCount: Int!
+  verifiedCount: Int!
+  orderCount: Int!
+  filledOrderCount: Int!
+  "USDC paid in by filled buy orders."
+  buyVolume: BigInt!
+  "USDC paid out by filled sell orders."
+  sellVolume: BigInt!
+  lastSlot: Int!
+  lastTime: Int!
+}
+
+"One tokenized stock mint. A ticker can have two: the retired freeze-gated mint and the current KYC-gated one."
+type Asset {
+  id: ID!
+  "Ticker as written in order instructions; null until an order names this mint."
+  symbol: String @index
+  "Stock tokens posted as collateral in vaults that have not been settled."
+  collateral: BigInt!
+  debtOutstanding: BigInt!
+  totalBorrowed: BigInt!
+  vaultCount: Int!
+  orderCount: Int!
+  buyVolume: BigInt!
+  sellVolume: BigInt!
+  "USDC per whole token at the latest fill."
+  lastPrice: Float
+  lastPriceTime: Int
+  vaults: [Vault!]! @derivedFrom(field: "asset")
+}
+
+"A borrower's position: one wallet, one collateral type."
+type Vault {
+  id: ID!
+  owner: Account!
+  asset: Asset
+  collateralType: String!
+  collateral: BigInt!
+  debt: BigInt!
+  totalBorrowed: BigInt!
+  totalRepaid: BigInt!
+  status: VaultStatus! @index
+  openedAt: Int!
+  updatedAt: Int!
+  actions: [VaultAction!]! @derivedFrom(field: "vault")
+}
+
+type VaultAction {
+  id: ID!
+  vault: Vault!
+  account: Account!
+  asset: Asset
+  kind: VaultActionKind! @index
+  "Stock atoms for DEPOSIT / TOP_UP, USDC atoms for BORROW / REPAY / SETTLE (sale proceeds), 0 for SEIZE."
+  amount: BigInt!
+  "Vault debt after this action."
+  debtAfter: BigInt!
+  slot: Int! @index
+  time: Int!
+  txSignature: String!
+}
+
+type Account {
+  id: ID!
+  identity: String
+  verified: Boolean!
+  vaultCount: Int!
+  debt: BigInt!
+  totalBorrowed: BigInt!
+  totalRepaid: BigInt!
+  lpDeposited: BigInt!
+  lpWithdrawn: BigInt!
+  seniorShares: BigInt!
+  juniorShares: BigInt!
+  orderCount: Int!
+  buyVolume: BigInt!
+  sellVolume: BigInt!
+  firstSeen: Int!
+  vaults: [Vault!]! @derivedFrom(field: "owner")
+  orders: [Order!]! @derivedFrom(field: "account")
+}
+
+"A wallet's KYC identity account in the OnchainId program."
+type Identity {
+  id: ID!
+  account: Account!
+  verified: Boolean!
+  createdAt: Int!
+}
+
+"One row per lending tranche."
+type TrancheStat {
+  id: ID!
+  tranche: Tranche!
+  shareMint: String!
+  deposited: BigInt!
+  withdrawn: BigInt!
+  "Share supply as last reported by the program."
+  shares: BigInt!
+  "USDC per share at the latest deposit or withdrawal."
+  sharePrice: Float
+  depositCount: Int!
+  withdrawCount: Int!
+}
+
+type LiquidityAction {
+  id: ID!
+  account: Account!
+  kind: LiquidityKind!
+  tranche: Tranche!
+  usdc: BigInt!
+  shares: BigInt!
+  slot: Int! @index
+  time: Int!
+  txSignature: String!
+}
+
+type YieldDistribution {
+  id: ID!
+  cycle: Int!
+  source: YieldSource!
+  toLenders: BigInt!
+  toReserve: BigInt!
+  slot: Int!
+  time: Int!
+  txSignature: String!
+}
+
+"A buy or sell order for a tokenized stock. Id is the order account."
+type Order {
+  id: ID!
+  orderId: BigInt!
+  account: Account!
+  asset: Asset!
+  ticker: String!
+  side: OrderSide!
+  status: OrderStatus! @index
+  "BUY: USDC paid in. SELL: stock atoms escrowed."
+  amountIn: BigInt!
+  "BUY: stock atoms minted. SELL: USDC paid out. Null until filled."
+  amountOut: BigInt
+  price: Float
+  placedSlot: Int! @index
+  placedAt: Int!
+  filledAt: Int
+  placeTx: String!
+  fillTx: String
+}
+
+"UTC-day buckets. Id is the day number (unix time / 86400)."
+type DailyStat {
+  id: ID!
+  date: Int! @index
+  borrowed: BigInt!
+  repaid: BigInt!
+  lpDeposited: BigInt!
+  lpWithdrawn: BigInt!
+  buyVolume: BigInt!
+  sellVolume: BigInt!
+  ordersPlaced: Int!
+  vaultsOpened: Int!
+  usersVerified: Int!
+  "Protocol debt outstanding at the day's last event."
+  debtOutstanding: BigInt!
+  poolAssets: BigInt!
+}
